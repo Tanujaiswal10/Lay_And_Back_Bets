@@ -8,6 +8,8 @@ const transactionRoute = require('./routes/transactionR')
 const routess= require('./routes/allR')
 const matchRoute = require('./routes/matchR')
 const winnerRoute = require('./routes/winnerR')
+const bookMakerRoute = require('./routes/bookMakerR')
+const fancyRoute = require('./routes/fancyR')
 const port = 8000;
 
 app.use(express.json());
@@ -24,6 +26,8 @@ app.use("/api/transaction",transactionRoute)
 app.use("/api/route",routess)
 app.use("/api/match",matchRoute)
 app.use("/api",winnerRoute)
+app.use("/api/bookmaker",bookMakerRoute)
+app.use("/api/fancy",fancyRoute)
 
 
 

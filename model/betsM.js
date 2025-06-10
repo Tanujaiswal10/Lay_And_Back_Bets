@@ -8,7 +8,6 @@ const betSchema = new Schema({
         ref: 'User',
         required: true
     },
-
     matchId: {
         type: Schema.Types.ObjectId,
         ref: 'Match',
@@ -18,6 +17,20 @@ const betSchema = new Schema({
         type: Schema.Types.ObjectId,
         ref: 'Market',
         required: true
+    },
+    betType:{
+        type: String,
+        enum: ['simple', 'fancy', 'bookmaker'],
+        required: true,
+        default:"simple"
+    },
+    bookmakerId: {
+        type: Schema.Types.ObjectId,
+        ref: 'Bookmaker'
+    },
+    fancyId: {
+        type: Schema.Types.ObjectId,
+        ref: 'Fancy'
     },
     amount: {
         type: Number,
