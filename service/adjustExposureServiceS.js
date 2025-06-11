@@ -82,7 +82,8 @@ for (const bet of exposure.bets) {
 
   return {
     exposure: updatedUser.exposure,
-    netExposure: exposure.netExposure
+    netExposure: exposure.netExposure,
+    marketExposure: exposure.marketExposure
   };
 };
 

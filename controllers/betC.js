@@ -6,8 +6,7 @@ class betController
     {
         try
         {
-            const { userId,matchId, marketId, amount, team, odds, type, status } = req.body;
-            const result = await betService.placeBetService(userId, matchId,marketId, amount,team, odds, type, status);
+            const result = await betService.placeBetService(req.body);
             res.status(200).json({
             message: result
             });        

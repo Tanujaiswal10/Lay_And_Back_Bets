@@ -3,11 +3,24 @@ const Bet = require("../model/betsM");
 const Market = require('../model/marketM');
 const Match = require('../model/matchM');
 const Bookmaker = require('../model/bookmakerM');
-const Fancy = require('../model/fancyOddM')
+const Fancy = require('../model/fancyOddM');
 const adjustExposureService = require('../service/adjustExposureServiceS');
 
-class betService {
-  async placeBetService(userId, matchId, marketId, betType, bookmakerId, fancyId, amount, team, odds, type, status) {
+class BetService {
+  async placeBetService(data) {
+    const {
+      userId,
+      matchId,
+      marketId = null,
+      betType,
+      bookmakerId = null,
+      fancyId = null,
+      amount,
+      team,
+      odds,
+      type,
+      status
+    } = data;
     if (!['back', 'lay'].includes(type)) {
       throw new Error("Invalid Bet type. Use only 'back' or 'lay'");
     }
@@ -28,7 +41,7 @@ class betService {
     let actualOdds = null;
     let runnerId = team;
 
-    if (betType === 'odds') {
+    if (betType === 'simple') {
       const market = await Market.findById(marketId);
       if (!market) throw new Error("No such market exists");
 
@@ -50,17 +63,21 @@ class betService {
       delayInSeconds = bookmaker.delay || 0;
 
     } else if (betType === 'fancy') {
-      const fancy = await Fancy.findById(fancyId);
-      if (!fancy) throw new Error("No such fancy exists");
-
-      actualOdds = fancy.odds;
+        const fancy = await Fancy.findById(fancyId);
+        if (!fancy) throw new Error("No such fancy exists");
+        if (!fancy.odds || typeof fancy.odds[type] !== 'number') 
+          {
+             throw new Error(`No fancy odds found for type '${type}'`);
+          }
+      actualOdds = fancy.odds[type];
       delayInSeconds = fancy.delay || 0;
-      runnerId = fancy._id; 
+      runnerId = fancy._id;
+
     } else {
-      throw new Error("Invalid bet type. Must be one of 'odds', 'bookmaker', or 'fancy'");
+      throw new Error("Invalid bet type. Must be one of 'simple', 'bookmaker', or 'fancy'");
     }
 
-    if (actualOdds !== odds) {
+    if (actualOdds !== odds){
       throw new Error(`Odds mismatch! The actual ${type} odds for '${team}' are ${actualOdds}`);
     }
 
@@ -80,6 +97,7 @@ class betService {
       betType,
       placedAt: new Date()
     });
+
     await bet.save();
 
     const exposure = await adjustExposureService({
@@ -90,11 +108,9 @@ class betService {
       betType: type,
       stake: amount,
       id: bet._id,
-      odds: betType === 'fancy' ? null : odds,
+      odds: odds,
       fancyOdds: betType === 'fancy' ? odds : null
     });
-
-    console.log('Exposure:', exposure);
 
     if (Math.abs(exposure.marketExposure) > user.totalBalance) {
       throw new Error("Insufficient balance for this bet after exposure adjustment.");
@@ -107,6 +123,4 @@ class betService {
   }
 }
 
-
-
-module.exports = new betService();
+module.exports = new BetService();
