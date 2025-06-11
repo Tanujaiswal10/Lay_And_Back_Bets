@@ -3,59 +3,64 @@ const UserMatchExposure = require('../model/userMatchExposureM');
 const express = require('express');
 const router = express.Router();
 
-
 router.post("/winner", async (req, res) => {
   try {
-    const { matchId, winnerTeam, status } = req.body;
+    const { matchId, winnerTeam, status, betType } = req.body;
 
     if (!matchId || (!winnerTeam && !['draw', 'suspended'].includes(status))) {
-      return res.status(400).json({ error: 'Provide matchId and either winnerTeam or status (draw/suspended)' });
+      return res.status(400).json({ error: 'Provide matchId and either winnerTeam or a status like draw/suspended' });
     }
 
-    const exposures = await UserMatchExposure.find({ matchId });
+  
+    const exposures = await UserMatchExposure.find({ matchId, type: betType });
 
     for (const exposure of exposures) {
       const { userId, bets } = exposure;
       let balanceUpdate = 0;
 
       for (const bet of bets) {
-        const isWin = bet.runnerId === winnerTeam;
+        if (bet.status !== 1) continue; 
 
         if (status === 'draw' || status === 'suspended') {
           bet.status = 0;
           continue;
         }
 
+        const isWin = bet.runnerId.toString() === winnerTeam.toString();
+
         if (bet.betType === 'back') {
-          if (isWin) {
-            balanceUpdate += bet.potentialProfit;
-          } else {
-            balanceUpdate -= bet.stake;
-          }
+          balanceUpdate += isWin ? bet.potentialProfit : -bet.stake;
         } else if (bet.betType === 'lay') {
-          if (!isWin) {
-            balanceUpdate += bet.stake;
-          } else {
-            balanceUpdate -= bet.liability;
-          }
+          balanceUpdate += !isWin ? bet.stake : -bet.liability;
         }
 
-        bet.status = 0; 
+        bet.status = 0;
       }
+
+      
+      exposure.settled = true;
+      exposure.marketExposure = 0;
+      exposure.netExposure = {};
+      await exposure.save();
+
+      const allExposures = await UserMatchExposure.find({ userId, matchId });
+      let newTotalExposure = 0;
+      allExposures.forEach(exp => {
+        if (exp.marketExposure) {
+          newTotalExposure += Math.abs(exp.marketExposure);
+        }
+      });
 
       await User.findByIdAndUpdate(
         userId,
         {
           $inc: { totalBalance: balanceUpdate },
-          $set: { exposure: 0 }
+          $set: { exposure: newTotalExposure }
         }
       );
-
-      exposure.settled = true;
-      await exposure.save();
     }
 
-    return res.status(200).json({ message: "Match settled successfully" });
+    return res.status(200).json({ message: `${betType} bets settled successfully` });
 
   } catch (error) {
     console.error("Settlement error:", error);
@@ -63,5 +68,4 @@ router.post("/winner", async (req, res) => {
   }
 });
 
-
-module.exports = router
+module.exports = router;
