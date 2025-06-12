@@ -24,7 +24,7 @@ const io = new Server(server, {
 
 const port = 8000;
 
-
+//middlewares
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
